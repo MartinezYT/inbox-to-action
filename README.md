@@ -91,25 +91,29 @@ No API key? It still works: the offline rules engine takes over (the header show
 ### Example request
 
 ```bash
-curl -X POST http://localhost:8000/api/messages \
+curl -X POST https://inbox-to-action.onrender.com/api/messages \
   -H "Content-Type: application/json" -H "X-API-Key: $API_KEY" \
-  -d '{"sender":"bola@yahoo.com","subject":"Still waiting!!","channel":"email",
-       "body":"My package was due Monday and it is still not here. I paid N45,000. Refund me today."}'
+  -d '{"sender":"sade@homeessentials.ng","subject":"Refund request","channel":"email",
+       "body":"I was charged twice for order #8831 (N18,500 each). Please refund the duplicate payment today."}'
 ```
+
+Real response from the live deployment (Groq engine):
 
 ```json
 {
-  "id": 7,
-  "engine": "claude",
+  "id": 14,
+  "engine": "groq",
   "triage": {
-    "category": "support", "urgency": "high", "confidence": 0.94,
-    "summary": "Customer's ₦45,000 order is late; they are demanding a same-day refund.",
-    "amount": 45000, "currency": "NGN", "needs_human": true,
-    "action_items": ["Check tracking", "Escalate refund decision to a manager"],
-    "suggested_reply": "Hi Bola, I'm really sorry your package hasn't arrived..."
+    "category": "invoice_payment", "urgency": "high", "confidence": 0.99,
+    "summary": "Customer requests refund for a duplicate payment on order #8831.",
+    "company": "Home Essentials", "amount": 18500, "currency": "NGN", "needs_human": true,
+    "action_items": ["Verify duplicate charge for order #8831", "Process refund of NGN 18500"],
+    "suggested_reply": "Hello,\n\nThank you for contacting us. We've received your request regarding the duplicate charge for order #8831 and will investigate this promptly..."
   }
 }
 ```
+
+Note `needs_human: true`: the prompt forbids the AI from promising refunds, so a person signs off first.
 
 ## API
 
