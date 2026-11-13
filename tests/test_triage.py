@@ -119,7 +119,7 @@ def test_groq_engine_forces_function_call(settings):
     s = replace(settings, triage_mode="groq", groq_api_key="x")
     service = TriageService(s, client=_fake_openai(CLAUDE_OUTPUT, seen))
     triage, engine = service.triage(MSG)
-    assert engine == "groq" and service.llm.model == "llama-3.3-70b-versatile"
+    assert engine == "groq" and service.llm.model == "openai/gpt-oss-120b"
     assert triage.category is Category.support
     body = seen[0]
     assert body["tool_choice"] == {"type": "function", "function": {"name": "record_triage"}}
@@ -141,3 +141,16 @@ def test_groq_bad_json_falls_back(settings):
 ])
 def test_auto_provider_picks_first_key(settings, keys, expected):
     assert replace(settings, triage_mode="auto", **keys).provider == expected
+
+
+def test_provider_error_message_is_kept(settings, caplog):
+    import httpx
+
+    def handler(request):
+        return httpx.Response(404, json={"error": {"message": "The model has been decommissioned"}})
+
+    client = httpx.Client(base_url="https://fake.test", transport=httpx.MockTransport(handler))
+    s = replace(settings, triage_mode="groq", groq_api_key="x")
+    with caplog.at_level("WARNING"):
+        assert TriageService(s, client=client).triage(MSG)[1] == "rules-fallback"
+    assert "decommissioned" in caplog.text

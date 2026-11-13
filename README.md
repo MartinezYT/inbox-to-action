@@ -54,7 +54,7 @@ flowchart LR
 | Engine | Env var | Cost | Default model |
 |---|---|---|---|
 | Claude (recommended) | `ANTHROPIC_API_KEY` | Paid, a few cents per 100 messages | `claude-haiku-5-5` |
-| Groq | `GROQ_API_KEY` | Free tier, no card | `llama-3.3-70b-versatile` |
+| Groq | `GROQ_API_KEY` | Free tier, no card | `openai/gpt-oss-120b` |
 | Gemini | `GEMINI_API_KEY` | Free tier | `gemini-2.5-flash` |
 | Rules (offline) | none | Free | keyword + regex engine |
 
@@ -133,7 +133,7 @@ TRIAGE_MODE=rules python -m evals.run_eval  # offline baseline
 | Engine | Category accuracy | Urgency accuracy |
 |---|---|---|
 | Rules baseline (offline) | 24/24 (100%)* | 21/24 (88%) |
-| Groq (`llama-3.3-70b-versatile`) | _pending_ | _pending_ |
+| Groq (`openai/gpt-oss-120b`) | _pending_ | _pending_ |
 | Claude (`claude-haiku-5-5`) | _pending_ | _pending_ |
 
 \*The rules engine's keywords were written alongside this small dataset, so it's a sanity baseline, not a real-world score. The interesting number is Claude's on messages it has never seen. Add your own real (anonymised) messages to `evals/dataset.jsonl` to test that.
@@ -173,7 +173,7 @@ app/
   notify.py      Slack / Telegram alerts
   dashboard.py   Single-file demo dashboard
 evals/           Labelled dataset + accuracy script
-tests/           35 pytest tests (Claude is faked, so they run offline and cost nothing)
+tests/           36 pytest tests (Claude is faked, so they run offline and cost nothing)
 n8n/             Importable automation workflow
 .github/         CI: lint, tests, eval threshold, Docker build
 ```

@@ -140,7 +140,7 @@ class ClaudeTriage:
 
 # Free OpenAI-compatible providers. Same forced-tool pattern, different wire format.
 PROVIDERS = {
-    "groq": {"base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile"},
+    "groq": {"base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b"},
     "gemini": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-2.5-flash"},
 }
 
@@ -176,7 +176,9 @@ class OpenAICompatTriage:
             "tool_choice": {"type": "function", "function": {"name": TRIAGE_TOOL_NAME}},
         }
         r = self.client.post("/chat/completions", json=payload)
-        r.raise_for_status()
+        if r.is_error:
+            # Surface the provider's own message (e.g. "model decommissioned") instead of a bare status code.
+            raise ValueError(f"{self.name} HTTP {r.status_code}: {r.text[:300]}")
         calls = r.json()["choices"][0]["message"].get("tool_calls") or []
         for call in calls:
             if call["function"]["name"] == TRIAGE_TOOL_NAME:
