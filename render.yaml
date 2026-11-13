@@ -1,0 +1,18 @@
+# One-click deploy on Render: New + > Blueprint > pick this repo.
+services:
+  - type: web
+    name: inbox-to-action
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # you'll paste it in the Render dashboard
+      - key: API_KEY
+        generateValue: true  # Render creates a random secret for you
+      - key: CLAUDE_MODEL
+        value: claude-haiku-5-5
+      - key: DEMO_MODE
+        value: "true"
+      - key: BUSINESS_NAME
+        value: Acme Logistics Lagos

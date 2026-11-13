@@ -1,0 +1,337 @@
+{
+  "name": "Inbox-to-Action",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        },
+        "options": {}
+      },
+      "id": "96625b78-455c-595e-8310-1bcf84f5714f",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbox",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "2c833245-4335-5a88-a737-eb4dbb06b3d5",
+      "name": "Webhook (web form / WhatsApp)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "sender",
+              "value": "={{ $json.from.value[0].address }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "body",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "channel",
+              "value": "email",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f534f123-e269-5e25-affc-48b143cf879d",
+      "name": "Normalise Gmail",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "sender",
+              "value": "={{ $json.body.sender }}",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "subject",
+              "value": "={{ $json.body.subject || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b3",
+              "name": "body",
+              "value": "={{ $json.body.body }}",
+              "type": "string"
+            },
+            {
+              "id": "b4",
+              "name": "channel",
+              "value": "={{ $json.body.channel || 'web_form' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "87b5077f-ace7-522f-b167-021720d14d4b",
+      "name": "Normalise Webhook",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.INBOX_API_URL }}/api/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INBOX_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sender: $json.sender, subject: $json.subject, body: $json.body, channel: $json.channel }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "505c95d7-a08d-5e22-97ee-d97a68f1a476",
+      "name": "Triage with Inbox-to-Action API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "PASTE_YOUR_SHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Inbox"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "received_at": "={{ $json.received_at }}",
+            "sender": "={{ $json.message.sender }}",
+            "channel": "={{ $json.message.channel }}",
+            "category": "={{ $json.triage.category }}",
+            "urgency": "={{ $json.triage.urgency }}",
+            "summary": "={{ $json.triage.summary }}",
+            "amount": "={{ $json.triage.amount }}",
+            "currency": "={{ $json.triage.currency }}",
+            "needs_human": "={{ $json.triage.needs_human }}",
+            "suggested_reply": "={{ $json.triage.suggested_reply }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "da470f99-8669-512c-94f1-e5023b1a76b9",
+      "name": "Log to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $('Triage with Inbox-to-Action API').item.json.triage.category }}",
+              "rightValue": "sales_lead",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7f701c4d-6704-5136-b921-aa1be3093bcb",
+      "name": "Is it a lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        960,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Triage with Inbox-to-Action API').item.json.message.subject }}",
+        "message": "={{ $('Triage with Inbox-to-Action API').item.json.triage.suggested_reply }}",
+        "options": {
+          "sendTo": "={{ $('Triage with Inbox-to-Action API').item.json.message.sender }}"
+        }
+      },
+      "id": "faad1c28-08ca-5e8e-96a8-e61da8a38720",
+      "name": "Create Gmail draft reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalise Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (web form / WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Normalise Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Gmail": {
+      "main": [
+        [
+          {
+            "node": "Triage with Inbox-to-Action API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Webhook": {
+      "main": [
+        [
+          {
+            "node": "Triage with Inbox-to-Action API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage with Inbox-to-Action API": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Is it a lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it a lead?": {
+      "main": [
+        [
+          {
+            "node": "Create Gmail draft reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
