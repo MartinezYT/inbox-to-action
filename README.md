@@ -133,8 +133,10 @@ TRIAGE_MODE=rules python -m evals.run_eval  # offline baseline
 | Engine | Category accuracy | Urgency accuracy |
 |---|---|---|
 | Rules baseline (offline) | 24/24 (100%)* | 21/24 (88%) |
-| Groq (`openai/gpt-oss-120b`) | _pending_ | _pending_ |
-| Claude (`claude-haiku-5-5`) | _pending_ | _pending_ |
+| Groq (`openai/gpt-oss-120b`), live deployment | 23/24 (96%) | 21/24 (88%) |
+| Claude (`claude-haiku-5-5`) | not measured yet | not measured yet |
+
+Groq's only category miss was a tech newsletter labelled `spam` instead of `other`; its urgency misses all rated low-priority partnership/enquiry messages one notch higher (`medium`). Measured on 13 Nov 2026 against https://inbox-to-action.onrender.com.
 
 \*The rules engine's keywords were written alongside this small dataset, so it's a sanity baseline, not a real-world score. The interesting number is Claude's on messages it has never seen. Add your own real (anonymised) messages to `evals/dataset.jsonl` to test that.
 
