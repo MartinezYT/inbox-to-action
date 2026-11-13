@@ -3,6 +3,7 @@
     python -m evals.run_eval                 # uses Claude if ANTHROPIC_API_KEY is set
     TRIAGE_MODE=rules python -m evals.run_eval
     python -m evals.run_eval --min-accuracy 0.8   # exit 1 if below (useful in CI)
+    python -m evals.run_eval --url https://your-app.onrender.com   # test the deployed app (DEMO_MODE on)
 
 Why this matters: an LLM feature without measurement is a guess. This script tells
 you, with a number, whether a prompt change made things better or worse.
@@ -17,21 +18,49 @@ import time
 from collections import Counter
 from pathlib import Path
 
+import httpx
+
 from app.config import get_settings
-from app.models import IncomingMessage
+from app.models import IncomingMessage, Triage
 from app.triage import TriageService
 
 DATASET = Path(__file__).with_name("dataset.jsonl")
+
+
+class RemoteService:
+    """Runs the eval against a deployed instance through its /api/try endpoint.
+
+    The API key stays on the server, so you can measure Claude without a key on your laptop.
+    /api/try is rate-limited, so on a 429 we wait for the window to reset and retry.
+    """
+
+    def __init__(self, base_url: str):
+        self.client = httpx.Client(base_url=base_url.rstrip("/"), timeout=90)
+        health = self.client.get("/health").json()
+        if not health.get("demo_mode"):
+            raise SystemExit("That deployment has DEMO_MODE off, so /api/try is unavailable.")
+        self.engine = health["engine"]
+
+    def triage(self, msg: IncomingMessage) -> tuple[Triage, str]:
+        for _ in range(5):
+            r = self.client.post("/api/try", json=msg.model_dump(mode="json"))
+            if r.status_code == 429:
+                print("  rate limited, waiting 61s...")
+                time.sleep(61)
+                continue
+            r.raise_for_status()
+            return Triage.model_validate(r.json()), f"{self.engine} (remote)"
+        raise RuntimeError("Still rate limited after 5 tries")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--min-accuracy", type=float, default=0.0)
     parser.add_argument("--verbose", "-v", action="store_true")
+    parser.add_argument("--url", help="evaluate a deployed instance instead of running locally")
     args = parser.parse_args()
 
-    settings = get_settings()
-    service = TriageService(settings)
+    service = RemoteService(args.url) if args.url else TriageService(get_settings())
     rows = [json.loads(line) for line in DATASET.read_text().splitlines() if line.strip()]
 
     cat_ok = urg_ok = 0

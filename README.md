@@ -115,6 +115,7 @@ curl -X POST http://localhost:8000/api/messages \
 
 ```bash
 python -m evals.run_eval -v                 # Claude (if key set)
+python -m evals.run_eval --url https://YOUR-APP.onrender.com   # measure the deployed app; key stays on the server
 TRIAGE_MODE=rules python -m evals.run_eval  # offline baseline
 ```
 
