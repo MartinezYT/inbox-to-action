@@ -30,7 +30,8 @@ class FakeClaude:
 @pytest.fixture
 def settings() -> Settings:
     return replace(Settings(), triage_mode="rules", database_path=":memory:", api_key="test-key",
-                   demo_mode=False, slack_webhook_url="", telegram_bot_token="", anthropic_api_key="")
+                   demo_mode=False, seed_demo_data=False, slack_webhook_url="", telegram_bot_token="",
+                   anthropic_api_key="")
 
 
 @pytest.fixture

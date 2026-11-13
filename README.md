@@ -5,7 +5,7 @@
 [![CI](https://github.com/MartinezYT/inbox-to-action/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinezYT/inbox-to-action/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-✓-009688) ![Claude](https://img.shields.io/badge/Claude-tool%20use-d97757) ![n8n](https://img.shields.io/badge/n8n-workflow-ea4b71)
 
-🔗 **Live demo:** https://YOUR-APP.onrender.com  ·  🎥 **2-min walkthrough:** YOUR_LOOM_LINK  ·  📖 **API docs:** https://YOUR-APP.onrender.com/docs
+🔗 **Live demo:** https://inbox-to-action.onrender.com  ·  📖 **API docs:** https://inbox-to-action.onrender.com/docs
 
 ![Dashboard](docs/dashboard.png)
 
@@ -115,7 +115,7 @@ curl -X POST http://localhost:8000/api/messages \
 
 ```bash
 python -m evals.run_eval -v                 # Claude (if key set)
-python -m evals.run_eval --url https://YOUR-APP.onrender.com   # measure the deployed app; key stays on the server
+python -m evals.run_eval --url https://inbox-to-action.onrender.com   # measure the deployed app; key stays on the server
 TRIAGE_MODE=rules python -m evals.run_eval  # offline baseline
 ```
 
@@ -139,7 +139,7 @@ TRIAGE_MODE=rules python -m evals.run_eval  # offline baseline
 1. Push this repo to GitHub.
 2. On [render.com](https://render.com): **New + → Blueprint →** select the repo. `render.yaml` sets everything up.
 3. Paste your `ANTHROPIC_API_KEY` when prompted. Render generates `API_KEY` for you.
-4. Seed the live demo: `python scripts/send_samples.py https://YOUR-APP.onrender.com --key YOUR_API_KEY`
+4. With `DEMO_MODE=true`, the app loads the 24 sample messages by itself whenever its database is empty (set `SEED_DEMO_DATA=false` to turn that off).
 
 The free tier sleeps when idle, so the first request after a while takes ~30s. The SQLite file resets on redeploy, which is fine for a demo. Use Postgres for real data.
 
@@ -161,7 +161,7 @@ app/
   notify.py      Slack / Telegram alerts
   dashboard.py   Single-file demo dashboard
 evals/           Labelled dataset + accuracy script
-tests/           28 pytest tests (Claude is faked, so they run offline and cost nothing)
+tests/           29 pytest tests (Claude is faked, so they run offline and cost nothing)
 n8n/             Importable automation workflow
 .github/         CI: lint, tests, eval threshold, Docker build
 ```

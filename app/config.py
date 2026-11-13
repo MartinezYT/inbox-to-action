@@ -26,6 +26,9 @@ class Settings:
     # Demo mode exposes the dashboard, read endpoints and a rate-limited /api/try publicly.
     # Turn it on for your portfolio deployment (sample data only), off for real customer data.
     demo_mode: bool = field(default_factory=lambda: _env("DEMO_MODE", "false").lower() in ("1", "true", "yes"))
+    # In demo mode, load the sample messages on startup when the database is empty
+    # (free hosts wipe the disk when the app sleeps).
+    seed_demo_data: bool = field(default_factory=lambda: _env("SEED_DEMO_DATA", "true").lower() in ("1", "true", "yes"))
     demo_rate_per_minute: int = field(default_factory=lambda: int(_env("DEMO_RATE_PER_MINUTE", "8")))
     max_message_chars: int = field(default_factory=lambda: int(_env("MAX_MESSAGE_CHARS", "8000")))
 

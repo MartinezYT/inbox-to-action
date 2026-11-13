@@ -68,3 +68,13 @@ def test_demo_mode_public_and_rate_limited(settings):
     assert c.post("/api/try", json=LEAD).status_code == 200
     assert c.post("/api/try", json=LEAD).status_code == 429
     assert c.get("/api/stats").json()["total"] == 0  # /api/try never stores
+
+
+def test_demo_mode_seeds_sample_data(settings):
+    import time
+    c = TestClient(create_app(replace(settings, demo_mode=True, seed_demo_data=True)))
+    for _ in range(50):
+        if c.get("/api/stats").json()["total"] == 24:
+            break
+        time.sleep(0.05)
+    assert c.get("/api/stats").json()["total"] == 24
