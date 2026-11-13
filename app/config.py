@@ -14,7 +14,11 @@ def _env(name: str, default: str = "") -> str:
 class Settings:
     anthropic_api_key: str = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))
     claude_model: str = field(default_factory=lambda: _env("CLAUDE_MODEL", "claude-haiku-5-5"))
-    # "auto" uses Claude when a key is present, otherwise the offline rules engine.
+    # Free alternatives (OpenAI-compatible). Used when there is no Anthropic key.
+    groq_api_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
+    gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY"))
+    llm_model: str = field(default_factory=lambda: _env("LLM_MODEL"))  # override the Groq/Gemini default
+    # auto | anthropic | groq | gemini | rules. "auto" = first provider with a key, else rules.
     triage_mode: str = field(default_factory=lambda: _env("TRIAGE_MODE", "auto").lower())
     # Shared secret callers must send in the X-API-Key header. Empty = auth disabled (local dev only).
     api_key: str = field(default_factory=lambda: _env("API_KEY"))
@@ -33,12 +37,18 @@ class Settings:
     max_message_chars: int = field(default_factory=lambda: int(_env("MAX_MESSAGE_CHARS", "8000")))
 
     @property
-    def use_claude(self) -> bool:
-        if self.triage_mode == "rules":
-            return False
-        if self.triage_mode == "claude":
-            return True
-        return bool(self.anthropic_api_key)
+    def provider(self) -> str:
+        """Which engine to use: anthropic, groq, gemini or rules."""
+        mode = "anthropic" if self.triage_mode == "claude" else self.triage_mode
+        if mode != "auto":
+            return mode
+        if self.anthropic_api_key:
+            return "anthropic"
+        if self.groq_api_key:
+            return "groq"
+        if self.gemini_api_key:
+            return "gemini"
+        return "rules"
 
 
 def get_settings() -> Settings:

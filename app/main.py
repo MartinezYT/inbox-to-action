@@ -61,10 +61,10 @@ class RateLimiter:
         return True
 
 
-def create_app(settings: Settings | None = None, claude_client=None) -> FastAPI:
+def create_app(settings: Settings | None = None, llm_client=None) -> FastAPI:
     settings = settings or get_settings()
     store = Store(settings.database_path)
-    service = TriageService(settings, claude_client=claude_client)
+    service = TriageService(settings, client=llm_client)
     limiter = RateLimiter(settings.demo_rate_per_minute)
 
     app = FastAPI(
@@ -97,8 +97,8 @@ def create_app(settings: Settings | None = None, claude_client=None) -> FastAPI:
     # ------------------------------------------------------------------ routes
     @app.get("/health")
     def health() -> dict:
-        return {"status": "ok", "engine": "claude" if service.claude else "rules",
-                "model": settings.claude_model if service.claude else None,
+        return {"status": "ok", "engine": service.engine,
+                "model": service.llm.model if service.llm else None,
                 "demo_mode": settings.demo_mode}
 
     @app.post("/api/messages", response_model=ProcessedMessage, status_code=201,

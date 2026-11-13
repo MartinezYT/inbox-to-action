@@ -50,7 +50,7 @@ def test_rules_flags_refunds_for_human(settings):
 
 def test_claude_engine_used_and_forced_tool(settings):
     fake = FakeClaude(tool_input=CLAUDE_OUTPUT)
-    service = TriageService(replace(settings, triage_mode="claude"), claude_client=fake)
+    service = TriageService(replace(settings, triage_mode="claude"), client=fake)
     triage, engine = service.triage(MSG)
     assert engine == "claude"
     assert triage.category is Category.support and triage.confidence == 0.93
@@ -61,7 +61,7 @@ def test_claude_engine_used_and_forced_tool(settings):
 
 def test_claude_failure_falls_back_to_rules(settings):
     fake = FakeClaude(raise_exc=RuntimeError("API down"))
-    service = TriageService(replace(settings, triage_mode="claude"), claude_client=fake)
+    service = TriageService(replace(settings, triage_mode="claude"), client=fake)
     triage, engine = service.triage(MSG)
     assert engine == "rules-fallback"
     assert triage.category is Category.support
@@ -69,7 +69,7 @@ def test_claude_failure_falls_back_to_rules(settings):
 
 def test_claude_invalid_output_falls_back(settings):
     fake = FakeClaude(tool_input={"category": "not-a-category"})
-    service = TriageService(replace(settings, triage_mode="claude"), claude_client=fake)
+    service = TriageService(replace(settings, triage_mode="claude"), client=fake)
     assert service.triage(MSG)[1] == "rules-fallback"
 
 
@@ -98,3 +98,46 @@ def test_angry_late_refund_is_support(settings):
 def test_generic_inbox_has_no_name(settings):
     t = RulesTriage(settings).triage(IncomingMessage(sender="newsletter@techcabal.com", body="Top stories"))
     assert t.sender_name is None
+
+
+def _fake_openai(arguments: dict | str, seen: list):
+    import json as _json
+
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(_json.loads(request.content))
+        args = arguments if isinstance(arguments, str) else _json.dumps(arguments)
+        return httpx.Response(200, json={"choices": [{"message": {"tool_calls": [
+            {"type": "function", "function": {"name": "record_triage", "arguments": args}}]}}]})
+
+    return httpx.Client(base_url="https://fake.test", transport=httpx.MockTransport(handler))
+
+
+def test_groq_engine_forces_function_call(settings):
+    seen: list = []
+    s = replace(settings, triage_mode="groq", groq_api_key="x")
+    service = TriageService(s, client=_fake_openai(CLAUDE_OUTPUT, seen))
+    triage, engine = service.triage(MSG)
+    assert engine == "groq" and service.llm.model == "llama-3.3-70b-versatile"
+    assert triage.category is Category.support
+    body = seen[0]
+    assert body["tool_choice"] == {"type": "function", "function": {"name": "record_triage"}}
+    params = body["tools"][0]["function"]["parameters"]
+    assert "anyOf" not in str(params) and "title" not in params
+
+
+def test_groq_bad_json_falls_back(settings):
+    s = replace(settings, triage_mode="groq", groq_api_key="x")
+    service = TriageService(s, client=_fake_openai("{not json", []))
+    assert service.triage(MSG)[1] == "rules-fallback"
+
+
+@pytest.mark.parametrize("keys,expected", [
+    ({}, "rules"),
+    ({"groq_api_key": "g"}, "groq"),
+    ({"gemini_api_key": "m"}, "gemini"),
+    ({"anthropic_api_key": "a", "groq_api_key": "g"}, "anthropic"),
+])
+def test_auto_provider_picks_first_key(settings, keys, expected):
+    assert replace(settings, triage_mode="auto", **keys).provider == expected

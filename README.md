@@ -3,7 +3,7 @@
 **An AI agent that reads a small business's inbound messages (email, web forms, WhatsApp), decides what each one is, pulls out the key details, drafts a reply, and routes it to the right place automatically.**
 
 [![CI](https://github.com/MartinezYT/inbox-to-action/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinezYT/inbox-to-action/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-✓-009688) ![Claude](https://img.shields.io/badge/Claude-tool%20use-d97757) ![n8n](https://img.shields.io/badge/n8n-workflow-ea4b71)
+![Python](https://img.shields.io/badge/python-3.12-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-✓-009688) ![Claude](https://img.shields.io/badge/Claude-tool%20use-d97757) ![Groq](https://img.shields.io/badge/Groq-free%20tier-f55036) ![n8n](https://img.shields.io/badge/n8n-workflow-ea4b71)
 
 🔗 **Live demo:** https://inbox-to-action.onrender.com  ·  📖 **API docs:** https://inbox-to-action.onrender.com/docs
 
@@ -40,7 +40,7 @@ flowchart LR
     C[WhatsApp webhook] --> N
     N -->|POST /api/messages + X-API-Key| API[FastAPI service]
     API --> T{TriageService}
-    T -->|forced tool call| CL[Claude API]
+    T -->|forced tool call| CL[Claude / Groq / Gemini]
     T -.->|fallback if API fails / no key| R[Rules engine]
     API --> DB[(SQLite)]
     API -->|background task| S[Slack / Telegram alert]
@@ -48,6 +48,17 @@ flowchart LR
     N --> GS[Google Sheets log]
     N --> GD[Gmail draft reply]
 ```
+
+**Pick your engine**
+
+| Engine | Env var | Cost | Default model |
+|---|---|---|---|
+| Claude (recommended) | `ANTHROPIC_API_KEY` | Paid, a few cents per 100 messages | `claude-haiku-5-5` |
+| Groq | `GROQ_API_KEY` | Free tier, no card | `llama-3.3-70b-versatile` |
+| Gemini | `GEMINI_API_KEY` | Free tier | `gemini-2.5-flash` |
+| Rules (offline) | none | Free | keyword + regex engine |
+
+With `TRIAGE_MODE=auto` (the default) the first engine with a key wins, in that order. Groq and Gemini go through their OpenAI-compatible APIs with a forced function call, so every engine returns the same validated `Triage` object.
 
 **Key design decisions**
 
@@ -122,7 +133,8 @@ TRIAGE_MODE=rules python -m evals.run_eval  # offline baseline
 | Engine | Category accuracy | Urgency accuracy |
 |---|---|---|
 | Rules baseline (offline) | 24/24 (100%)* | 21/24 (88%) |
-| Claude (`claude-haiku-5-5`) | _run and paste your result_ | _run and paste your result_ |
+| Groq (`llama-3.3-70b-versatile`) | _pending_ | _pending_ |
+| Claude (`claude-haiku-5-5`) | _pending_ | _pending_ |
 
 \*The rules engine's keywords were written alongside this small dataset, so it's a sanity baseline, not a real-world score. The interesting number is Claude's on messages it has never seen. Add your own real (anonymised) messages to `evals/dataset.jsonl` to test that.
 
@@ -161,7 +173,7 @@ app/
   notify.py      Slack / Telegram alerts
   dashboard.py   Single-file demo dashboard
 evals/           Labelled dataset + accuracy script
-tests/           29 pytest tests (Claude is faked, so they run offline and cost nothing)
+tests/           35 pytest tests (Claude is faked, so they run offline and cost nothing)
 n8n/             Importable automation workflow
 .github/         CI: lint, tests, eval threshold, Docker build
 ```

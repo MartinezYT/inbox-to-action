@@ -8,6 +8,8 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false          # you'll paste it in the Render dashboard
+      - key: GROQ_API_KEY
+        sync: false          # free alternative if you don't have an Anthropic key
       - key: API_KEY
         generateValue: true  # Render creates a random secret for you
       - key: CLAUDE_MODEL

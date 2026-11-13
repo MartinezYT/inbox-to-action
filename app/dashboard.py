@@ -128,7 +128,8 @@ $("go").onclick = async () => {
 async function load() {
   const [h, s, m] = await Promise.all([fetch("/health"), fetch("/api/stats"), fetch("/api/messages?limit=25")]
     .map(p => p.then(r => r.json())));
-  $("engine").textContent = h.engine === "claude" ? "Engine: Claude (" + h.model + ")" : "Engine: offline rules";
+  const names = {claude: "Claude", groq: "Groq", gemini: "Gemini"};
+  $("engine").textContent = h.model ? "Engine: " + (names[h.engine] || h.engine) + " (" + h.model + ")" : "Engine: offline rules";
   $("s-total").textContent = s.total; $("s-human").textContent = s.needs_human;
   $("s-leads").textContent = s.by_category.sales_lead || 0;
   const list = $("list"); list.replaceChildren();
