@@ -173,7 +173,7 @@ app/
   notify.py      Slack / Telegram alerts
   dashboard.py   Single-file demo dashboard
 evals/           Labelled dataset + accuracy script
-tests/           36 pytest tests (Claude is faked, so they run offline and cost nothing)
+tests/           37 pytest tests (Claude is faked, so they run offline and cost nothing)
 n8n/             Importable automation workflow
 .github/         CI: lint, tests, eval threshold, Docker build
 ```

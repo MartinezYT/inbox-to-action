@@ -125,6 +125,8 @@ def test_groq_engine_forces_function_call(settings):
     assert body["tool_choice"] == {"type": "function", "function": {"name": "record_triage"}}
     params = body["tools"][0]["function"]["parameters"]
     assert "anyOf" not in str(params) and "title" not in params
+    assert params["properties"]["company"]["type"] == ["string", "null"]  # optional fields may be null
+    assert params["properties"]["category"]["type"] == "string"
 
 
 def test_groq_bad_json_falls_back(settings):
@@ -154,3 +156,26 @@ def test_provider_error_message_is_kept(settings, caplog):
     with caplog.at_level("WARNING"):
         assert TriageService(s, client=client).triage(MSG)[1] == "rules-fallback"
     assert "decommissioned" in caplog.text
+
+
+def test_groq_retries_once_after_short_rate_limit(settings, monkeypatch):
+    import json as _json
+
+    import httpx
+
+    import app.triage as triage_mod
+
+    monkeypatch.setattr(triage_mod.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"retry-after": "1"}, json={"error": {"message": "slow down"}})
+        return httpx.Response(200, json={"choices": [{"message": {"tool_calls": [{"type": "function", "function": {
+            "name": "record_triage", "arguments": _json.dumps(CLAUDE_OUTPUT)}}]}}]})
+
+    client = httpx.Client(base_url="https://fake.test", transport=httpx.MockTransport(handler))
+    s = replace(settings, triage_mode="groq", groq_api_key="x")
+    assert TriageService(s, client=client).triage(MSG)[1] == "groq"
+    assert calls["n"] == 2

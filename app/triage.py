@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from typing import Protocol
 
 import httpx
@@ -90,8 +91,8 @@ def _user_content(msg: IncomingMessage, max_chars: int) -> str:
 def _simplify_schema(node):
     """Open-model tool calling is stricter about JSON Schema than Claude.
 
-    Drop titles/defaults and turn `anyOf: [X, null]` into plain X so the schema is easy to follow.
-    Pydantic still validates the answer afterwards, so nothing is lost.
+    Drop titles/defaults and turn `anyOf: [X, null]` into `type: [X, "null"]`, which open models
+    follow more reliably. Pydantic still validates the answer afterwards.
     """
     if isinstance(node, list):
         return [_simplify_schema(v) for v in node]
@@ -102,6 +103,8 @@ def _simplify_schema(node):
         options = [o for o in node["anyOf"] if o.get("type") != "null"]
         if len(options) == 1:
             merged = {**options[0], **{k: v for k, v in node.items() if k != "anyOf"}}
+            if len(options) < len(node["anyOf"]) and isinstance(merged.get("type"), str):
+                merged["type"] = [merged["type"], "null"]  # keep it optional
             return _simplify_schema(merged)
     return {k: _simplify_schema(v) for k, v in node.items()}
 
@@ -176,6 +179,12 @@ class OpenAICompatTriage:
             "tool_choice": {"type": "function", "function": {"name": TRIAGE_TOOL_NAME}},
         }
         r = self.client.post("/chat/completions", json=payload)
+        if r.status_code == 429:
+            # Free tiers have tight per-minute limits; a short wait usually clears it.
+            wait = float(r.headers.get("retry-after", "2") or 2)
+            if wait <= 10:
+                time.sleep(wait + 0.5)
+                r = self.client.post("/chat/completions", json=payload)
         if r.is_error:
             # Surface the provider's own message (e.g. "model decommissioned") instead of a bare status code.
             raise ValueError(f"{self.name} HTTP {r.status_code}: {r.text[:300]}")

@@ -30,8 +30,11 @@ log = logging.getLogger("inbox")
 SAMPLES = Path(__file__).resolve().parent.parent / "evals" / "dataset.jsonl"
 
 
-def seed_demo(store: Store, service: TriageService) -> None:
-    """Triage the sample messages so a fresh demo dashboard isn't empty."""
+def seed_demo(store: Store, service: TriageService, pause: float = 0.0) -> None:
+    """Triage the sample messages so a fresh demo dashboard isn't empty.
+
+    `pause` spaces out the calls so free-tier per-minute limits aren't used up in one burst.
+    """
     if store.stats().total or not SAMPLES.exists():
         return
     for line in SAMPLES.read_text().splitlines():
@@ -40,6 +43,8 @@ def seed_demo(store: Store, service: TriageService) -> None:
         msg = IncomingMessage.model_validate(json.loads(line)["input"])
         triage, engine = service.triage(msg)
         store.add(msg, triage, engine)
+        if service.llm is not None and pause:
+            time.sleep(pause)
     log.info("Seeded demo data")
 
 
@@ -76,7 +81,8 @@ def create_app(settings: Settings | None = None, llm_client=None) -> FastAPI:
 
     if settings.demo_mode and settings.seed_demo_data:
         # Background thread: startup stays fast even when each sample goes to Claude.
-        threading.Thread(target=seed_demo, args=(store, service), daemon=True).start()
+        threading.Thread(target=seed_demo, args=(store, service, settings.seed_pause_seconds),
+                         daemon=True).start()
 
     # ------------------------------------------------------------------ auth helpers
     def require_key(x_api_key: str | None = Header(default=None)) -> None:

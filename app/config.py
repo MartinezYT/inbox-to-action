@@ -33,6 +33,7 @@ class Settings:
     # In demo mode, load the sample messages on startup when the database is empty
     # (free hosts wipe the disk when the app sleeps).
     seed_demo_data: bool = field(default_factory=lambda: _env("SEED_DEMO_DATA", "true").lower() in ("1", "true", "yes"))
+    seed_pause_seconds: float = field(default_factory=lambda: float(_env("SEED_PAUSE_SECONDS", "10")))
     demo_rate_per_minute: int = field(default_factory=lambda: int(_env("DEMO_RATE_PER_MINUTE", "8")))
     max_message_chars: int = field(default_factory=lambda: int(_env("MAX_MESSAGE_CHARS", "8000")))
 
